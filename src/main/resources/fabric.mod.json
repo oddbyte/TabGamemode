@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "tabgamemode",
+  "version": "${version}",
+  "name": "TabGamemode",
+  "description": "Shows player's gamemode in tab.",
+  "authors": [],
+  "contact": {},
+  "license": "Apache-2.0",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.oddbyte.tabgamemode.client.TabgamemodeClient"
+    ],
+    "main": [
+      "dev.oddbyte.tabgamemode.Tabgamemode"
+    ]
+  },
+  "mixins": [
+    "tabgamemode.mixins.json",
+    {
+      "config": "tabgamemode.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
