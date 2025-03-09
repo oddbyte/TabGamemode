@@ -2,11 +2,16 @@ package dev.oddbyte.tabgamemodes.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
+import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.world.GameMode;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,10 +19,19 @@ import java.util.regex.Pattern;
 public class TabgamemodesClient implements ClientModInitializer {
 
     private static final Pattern GAME_MODE_PATTERN = Pattern.compile("§7\\[(Sp|S|C|A)] §r");
+    private KeyBinding toggleBinding;
+    private boolean modsEnabled = true;
+    private boolean lastKeyState = false;
 
     @Override
     public void onInitializeClient() {
-        // Register a tick event to periodically update the tab names
+        toggleBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "Tab Gamemode Toggle",
+                InputUtil.Type.MOUSE,
+                GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+                "Tab Gamemodes"
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(this::onEndClientTick);
     }
 
@@ -26,7 +40,22 @@ public class TabgamemodesClient implements ClientModInitializer {
             return;
         }
 
-        // Iterate over the player list and modify the display names
+        boolean currentState = toggleBinding.isPressed();
+        if (currentState && !lastKeyState) {
+            boolean wasEnabled = modsEnabled;
+            modsEnabled = !modsEnabled;
+            client.player.sendMessage(Text.literal("Tab Gamemodes: " + (modsEnabled ? "§aEnabled" : "§cDisabled")), true);
+            if (wasEnabled && !modsEnabled) {
+                resetTabListModifications(client);
+                client.getNetworkHandler().sendPacket(new ClientStatusC2SPacket(ClientStatusC2SPacket.Mode.REQUEST_STATS));
+            }
+        }
+        lastKeyState = currentState;
+
+        if (!modsEnabled) {
+            return;
+        }
+
         for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
             GameMode currentGameMode = entry.getGameMode();
             if (currentGameMode != null) {
@@ -50,6 +79,12 @@ public class TabgamemodesClient implements ClientModInitializer {
                 // Set the updated display name
                 entry.setDisplayName(updatedName);
             }
+        }
+    }
+
+    private void resetTabListModifications(MinecraftClient client) {
+        for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+            entry.setDisplayName(null); // Clear display name
         }
     }
 
